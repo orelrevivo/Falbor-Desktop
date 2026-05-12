@@ -17,7 +17,7 @@
     "package:mac": "electron-builder --mac",
     "package:win": "electron-builder --win",
     "package:linux": "electron-builder --linux",
-    "dist": "electron-builder",
+    "dist": "npm run build && electron-builder",
     "dist:manifest": "node scripts/generate-update-manifest.mjs",
     "dist:upload": "node scripts/upload-release.mjs",
     "claude:download": "node scripts/download-claude-binary.mjs --version=2.1.45",
