@@ -29,15 +29,15 @@ jobs:
       - name: Create .env file
         shell: pwsh
         run: |
-          if ("${{ secrets.ENV_FILE }}" -ne "") {
-            $Env:ENV_FILE | Out-File -FilePath .env -Encoding utf8
-            Write-Host "Success: .env file created."
+          if ($Env:RAW_ENV -and $Env:RAW_ENV.Trim() -ne "") {
+            $Env:RAW_ENV | Out-File -FilePath .env -Encoding utf8
+            Write-Host "Success: .env file created from secret."
           } else {
-            Write-Error "Error: ENV_FILE secret is missing in GitHub Settings!"
+            Write-Error "Error: The secret named 'ENV_FILE' was not found or is empty in GitHub Settings!"
             exit 1
           }
         env:
-          ENV_FILE: ${{ secrets.ENV_FILE }}
+          RAW_ENV: ${{ secrets.ENV_FILE }}
 
       - name: Install dependencies
         run: bun install
