@@ -1,6 +1,6 @@
 {
   "name": "falbor-desktop",
-  "version": "0.0.72",
+  "version": "0.0.75",
   "private": true,
   "description": "Falbor - UI for parallel work with AI agents",
   "homepage": "https://21st.dev",
@@ -261,7 +261,9 @@
     "publish": {
       "provider": "github",
       "owner": "orelrevivo",
-      "repo": "Falbor-Desktop"
+      "repo": "Falbor-Desktop",
+      "publishAutoUpdate": true,
+      "releaseType": "release"
     }
   },
   "pnpm": {
