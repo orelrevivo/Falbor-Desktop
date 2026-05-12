@@ -145,7 +145,7 @@
   "build": {
     "appId": "dev.21st.agents",
     "productName": "Falbor",
-    "npmRebuild": true,
+    "npmRebuild": false,
     "protocols": [
       {
         "name": "Falbor",
@@ -255,8 +255,9 @@
       "uninstallerIcon": "build/icon.ico"
     },
     "publish": {
-      "provider": "generic",
-      "url": "https://cdn.21st.dev/releases/desktop"
+      "provider": "github",
+      "owner": "orelrevivo",
+      "repo": "Falbor-Desktop"
     }
   },
   "pnpm": {
