@@ -16,6 +16,11 @@ jobs:
       - name: Check out Git repository
         uses: actions/checkout@v4
 
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
       - name: Install Bun
         uses: oven-sh/setup-bun@v1
         with:
@@ -27,12 +32,15 @@ jobs:
       - name: Create .env file
         shell: pwsh
         run: |
-          $Env:ENV_FILE | Out-File -FilePath .env -Encoding utf8
+          if ("${{ secrets.ENV_FILE }}" -ne "") {
+            $Env:ENV_FILE | Out-File -FilePath .env -Encoding utf8
+            Write-Host "Success: .env file created from secret."
+          } else {
+            Write-Error "Error: ENV_FILE secret is missing in GitHub Settings!"
+            exit 1
+          }
         env:
           ENV_FILE: ${{ secrets.ENV_FILE }}
-
-      - name: Verify .env exists
-        run: ls -l .env
 
       - name: Download Agent Binaries
         run: |
