@@ -21,6 +21,9 @@ jobs:
         with:
           python-version: '3.11'
 
+      - name: Setup MSVC (C++ Compiler)
+        uses: ilammy/msvc-dev-cmd@v1
+
       - name: Install Bun
         uses: oven-sh/setup-bun@v1
         with:
@@ -31,9 +34,9 @@ jobs:
         run: |
           if ($Env:RAW_ENV -and $Env:RAW_ENV.Trim() -ne "") {
             $Env:RAW_ENV | Out-File -FilePath .env -Encoding utf8
-            Write-Host "Success: .env file created from secret."
+            Write-Host "Success: .env file created."
           } else {
-            Write-Error "Error: The secret named 'ENV_FILE' was not found or is empty in GitHub Settings!"
+            Write-Error "Error: ENV_FILE secret is missing in GitHub Settings!"
             exit 1
           }
         env:
@@ -45,6 +48,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           npm_config_arch: x64
           npm_config_target_arch: x64
+          GYP_MSVS_VERSION: 2022
 
       - name: Download Agent Binaries
         run: |
@@ -58,4 +62,5 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CSC_SKIP_SIGNING: true
+          GYP_MSVS_VERSION: 2022
           DEBUG: electron-builder
