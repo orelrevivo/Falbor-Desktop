@@ -58,9 +58,14 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and Distribute
-        run: bun run dist
+        run: bun run dist -- --publish always
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CSC_SKIP_SIGNING: true
           GYP_MSVS_VERSION: 2022
           DEBUG: electron-builder
+      - name: Upload Artifacts (Backup)
+        uses: actions/upload-artifact@v4
+        with:
+          name: Falbor-Windows-EXE
+          path: release/*.exe
