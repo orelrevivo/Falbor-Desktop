@@ -1,4 +1,4 @@
-﻿import * as Sentry from "@sentry/electron/main"
+import * as Sentry from "@sentry/electron/main"
 import { app, BrowserWindow, dialog, Menu, nativeImage, session } from "electron"
 import { existsSync, readFileSync, readlinkSync, unlinkSync } from "fs"
 import { createServer } from "http"
@@ -469,9 +469,6 @@ const server = createServer((req, res) => {
     }
   })
 
-server.listen(AUTH_SERVER_PORT, () => {
-  console.log(`[Auth Server] Listening on http://localhost:${AUTH_SERVER_PORT}`)
-})
 
 // Clean up stale lock files from crashed instances
 // Returns true if locks were cleaned, false otherwise
@@ -531,6 +528,11 @@ if (!gotTheLock) {
 }
 
 if (gotTheLock) {
+  // Start the auth server only after we've secured the single instance lock
+  server.listen(AUTH_SERVER_PORT, () => {
+    console.log(`[Auth Server] Listening on http://localhost:${AUTH_SERVER_PORT}`)
+  })
+
   // Handle second instance launch (also handles deep links on Windows/Linux)
   app.on("second-instance", (_event, commandLine) => {
     // Check for deep link in command line args
