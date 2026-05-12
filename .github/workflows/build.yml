@@ -26,21 +26,25 @@ jobs:
         with:
           bun-version: latest
 
-      - name: Install dependencies
-        run: bun install
-
       - name: Create .env file
         shell: pwsh
         run: |
           if ("${{ secrets.ENV_FILE }}" -ne "") {
             $Env:ENV_FILE | Out-File -FilePath .env -Encoding utf8
-            Write-Host "Success: .env file created from secret."
+            Write-Host "Success: .env file created."
           } else {
             Write-Error "Error: ENV_FILE secret is missing in GitHub Settings!"
             exit 1
           }
         env:
           ENV_FILE: ${{ secrets.ENV_FILE }}
+
+      - name: Install dependencies
+        run: bun install
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          npm_config_arch: x64
+          npm_config_target_arch: x64
 
       - name: Download Agent Binaries
         run: |
@@ -53,4 +57,5 @@ jobs:
         run: bun run dist
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CSC_SKIP_SIGNING: true
           DEBUG: electron-builder
