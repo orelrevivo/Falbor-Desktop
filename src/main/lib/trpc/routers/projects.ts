@@ -1,7 +1,8 @@
+import { TRPCError } from "@trpc/server"
 import { z } from "zod"
 import { router, publicProcedure } from "../index"
 import { getDatabase, projects, getAll, getOne, runQuery } from "../../db"
-import { eq, desc } from "drizzle-orm"
+import { eq, desc, and } from "drizzle-orm"
 import { dialog, BrowserWindow, app } from "electron"
 import { basename, join } from "path"
 import { exec } from "node:child_process"
@@ -27,9 +28,10 @@ export const projectsRouter = router({
   /**
    * List all projects
    */
-  list: publicProcedure.query(async () => {
+  list: publicProcedure.query(async ({ ctx }) => {
     const db = getDatabase()
-    return getAll(db.select().from(projects).orderBy(desc(projects.updatedAt)))
+    if (!ctx.userId) return []
+    return getAll(db.select().from(projects).where(eq(projects.userId, ctx.userId)).orderBy(desc(projects.updatedAt)))
   }),
 
   /**
@@ -37,9 +39,10 @@ export const projectsRouter = router({
    */
   get: publicProcedure
     .input(z.object({ id: z.string() }))
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
       const db = getDatabase()
-      return getOne(db.select().from(projects).where(eq(projects.id, input.id)))
+      if (!ctx.userId) return null
+      return getOne(db.select().from(projects).where(and(eq(projects.id, input.id), eq(projects.userId, ctx.userId))))
     }),
 
   /**
@@ -83,7 +86,7 @@ export const projectsRouter = router({
       db
         .select()
         .from(projects)
-        .where(eq(projects.path, folderPath))
+        .where(and(eq(projects.path, folderPath), eq(projects.userId, ctx.userId)))
     )
 
     if (existing) {
@@ -98,7 +101,7 @@ export const projectsRouter = router({
             gitOwner: gitInfo.owner,
             gitRepo: gitInfo.repo,
           })
-          .where(eq(projects.id, existing.id))
+          .where(and(eq(projects.id, existing.id), eq(projects.userId, ctx.userId)))
           .returning()
       )
 
@@ -122,6 +125,7 @@ export const projectsRouter = router({
           gitProvider: gitInfo.provider,
           gitOwner: gitInfo.owner,
           gitRepo: gitInfo.repo,
+          userId: ctx.userId,
         })
         .returning()
     )
@@ -140,8 +144,11 @@ export const projectsRouter = router({
    */
   create: publicProcedure
     .input(z.object({ path: z.string(), name: z.string().optional() }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       const db = getDatabase()
+      if (!ctx.userId) {
+        throw new TRPCError({ code: "UNAUTHORIZED", message: "Not authenticated" })
+      }
       const name = input.name || basename(input.path)
 
       // Check if project already exists
@@ -149,7 +156,7 @@ export const projectsRouter = router({
         db
           .select()
           .from(projects)
-          .where(eq(projects.path, input.path))
+          .where(and(eq(projects.path, input.path), eq(projects.userId, ctx.userId)))
       )
 
       if (existing) {
@@ -169,6 +176,7 @@ export const projectsRouter = router({
             gitProvider: gitInfo.provider,
             gitOwner: gitInfo.owner,
             gitRepo: gitInfo.repo,
+            userId: ctx.userId,
           })
           .returning()
       )
@@ -179,8 +187,11 @@ export const projectsRouter = router({
    */
   createScratchProject: publicProcedure
     .input(z.object({ type: z.enum(["website", "app"]) }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       const db = getDatabase()
+      if (!ctx.userId) {
+        throw new TRPCError({ code: "UNAUTHORIZED", message: "Not authenticated" })
+      }
       const timestamp = new Date().toLocaleDateString('en-US').replace(/\//g, '-') + '-' + Math.floor(Math.random() * 1000)
       const projectName = `${input.type === "website" ? "New-Website" : "New-App"}-${timestamp}`
       
@@ -306,6 +317,7 @@ export default App`
             name: projectName,
             path: projectPath,
             type: input.type,
+            userId: ctx.userId,
           })
           .returning()
       )
@@ -321,9 +333,10 @@ export default App`
   /**
    * Ensure a default project exists (Master Mode)
    */
-  ensureDefaultProject: publicProcedure.mutation(async () => {
+  ensureDefaultProject: publicProcedure.mutation(async ({ ctx }) => {
     const db = getDatabase()
-    const allProjects = await getAll(db.select().from(projects))
+    if (!ctx.userId) return null
+    const allProjects = await getAll(db.select().from(projects).where(eq(projects.userId, ctx.userId)))
     
     if (allProjects.length > 0) {
       return allProjects[0]
@@ -343,6 +356,7 @@ export default App`
         .values({
           name: "Default Project",
           path: defaultPath,
+          userId: ctx.userId,
         })
         .returning()
     )
@@ -353,13 +367,13 @@ export default App`
    */
   rename: publicProcedure
     .input(z.object({ id: z.string(), name: z.string().min(1) }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       const db = getDatabase()
       return getOne(
         db
           .update(projects)
           .set({ name: input.name, updatedAt: new Date() })
-          .where(eq(projects.id, input.id))
+          .where(and(eq(projects.id, input.id), eq(projects.userId, ctx.userId)))
           .returning()
       )
     }),
@@ -369,12 +383,12 @@ export default App`
    */
   delete: publicProcedure
     .input(z.object({ id: z.string() }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       const db = getDatabase()
       return getOne(
         db
           .delete(projects)
-          .where(eq(projects.id, input.id))
+          .where(and(eq(projects.id, input.id), eq(projects.userId, ctx.userId)))
           .returning()
       )
     }),
@@ -384,7 +398,7 @@ export default App`
    */
   refreshGitInfo: publicProcedure
     .input(z.object({ id: z.string() }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       const db = getDatabase()
 
       // Get project
@@ -392,7 +406,7 @@ export default App`
         db
           .select()
           .from(projects)
-          .where(eq(projects.id, input.id))
+          .where(and(eq(projects.id, input.id), eq(projects.userId, ctx.userId)))
       )
 
       if (!project) {
@@ -413,7 +427,7 @@ export default App`
             gitOwner: gitInfo.owner,
             gitRepo: gitInfo.repo,
           })
-          .where(eq(projects.id, input.id))
+          .where(and(eq(projects.id, input.id), eq(projects.userId, ctx.userId)))
           .returning()
       )
     }),
@@ -423,7 +437,7 @@ export default App`
    */
   cloneFromGitHub: publicProcedure
     .input(z.object({ repoUrl: z.string() }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       const { repoUrl } = input
 
       // Parse the URL to extract owner/repo
@@ -470,7 +484,7 @@ export default App`
           db
           .select()
           .from(projects)
-          .where(eq(projects.path, clonePath))
+          .where(and(eq(projects.path, clonePath), eq(projects.userId, ctx.userId)))
         )
 
         if (existing) {
@@ -493,6 +507,7 @@ export default App`
             gitProvider: gitInfo.provider,
             gitOwner: gitInfo.owner,
             gitRepo: gitInfo.repo,
+            userId: ctx.userId,
           })
           .returning()
         )
@@ -525,6 +540,7 @@ export default App`
             gitProvider: gitInfo.provider,
             gitOwner: gitInfo.owner,
             gitRepo: gitInfo.repo,
+            userId: ctx.userId,
           })
           .returning()
       )
@@ -595,7 +611,7 @@ export default App`
         db
           .select()
           .from(projects)
-          .where(eq(projects.path, folderPath))
+          .where(and(eq(projects.path, folderPath), eq(projects.userId, ctx.userId)))
       )
 
       if (existing) {
@@ -610,7 +626,7 @@ export default App`
               gitOwner: gitInfo.owner,
               gitRepo: gitInfo.repo,
             })
-            .where(eq(projects.id, existing.id))
+            .where(and(eq(projects.id, existing.id), eq(projects.userId, ctx.userId)))
             .returning()
         )
 
@@ -627,6 +643,7 @@ export default App`
             gitProvider: gitInfo.provider,
             gitOwner: gitInfo.owner,
             gitRepo: gitInfo.repo,
+            userId: ctx.userId,
           })
           .returning()
       )
@@ -710,7 +727,7 @@ export default App`
         db
           .update(projects)
           .set({ iconPath: destPath, updatedAt: new Date() })
-          .where(eq(projects.id, input.id))
+          .where(and(eq(projects.id, input.id), eq(projects.userId, ctx.userId)))
           .returning()
       )
     }),
@@ -732,7 +749,7 @@ export default App`
         db
           .update(projects)
           .set({ iconPath: null, updatedAt: new Date() })
-          .where(eq(projects.id, input.id))
+          .where(and(eq(projects.id, input.id), eq(projects.userId, ctx.userId)))
           .returning()
       )
     }),

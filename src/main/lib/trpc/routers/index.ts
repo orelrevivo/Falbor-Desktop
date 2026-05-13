@@ -1,5 +1,6 @@
 import { router } from "../index"
 import { projectsRouter } from "./projects"
+import { authRouter } from "./auth"
 import { chatsRouter } from "./chats"
 import { claudeRouter } from "./claude"
 import { claudeCodeRouter } from "./claude-code"
@@ -27,6 +28,7 @@ import { BrowserWindow } from "electron"
  */
 export function createAppRouter(getWindow: () => BrowserWindow | null) {
   return router({
+    auth: authRouter,
     projects: projectsRouter,
     chats: chatsRouter,
     claude: claudeRouter,

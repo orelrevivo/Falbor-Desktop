@@ -3,6 +3,9 @@ import { Input } from "../../ui/input"
 import { Label } from "../../ui/label"
 import { IconSpinner } from "../../../icons"
 import { toast } from "sonner"
+import { trpc } from "../../../lib/trpc"
+import { useAtomValue } from "jotai"
+import { authTokenAtom } from "../../../App"
 
 // Hook to detect narrow screen
 function useIsNarrowScreen(): boolean {
@@ -21,54 +24,40 @@ function useIsNarrowScreen(): boolean {
   return isNarrow
 }
 
-interface DesktopUser {
-  id: string
-  email: string
-  name: string | null
-  imageUrl: string | null
-  username: string | null
-}
-
 export function AgentsProfileTab() {
-  const [user, setUser] = useState<DesktopUser | null>(null)
+  const token = useAtomValue(authTokenAtom)
   const [fullName, setFullName] = useState("")
-  const [isLoading, setIsLoading] = useState(true)
   const isNarrowScreen = useIsNarrowScreen()
   const savedNameRef = useRef("")
 
-  // Fetch real user data from desktop API
+  const { data: user, isLoading } = trpc.auth.me.useQuery(
+    { token },
+    { enabled: !!token }
+  )
+
+  const updateProfile = trpc.auth.updateProfile.useMutation()
+
   useEffect(() => {
-    async function fetchUser() {
-      if (window.desktopApi?.getUser) {
-        const userData = await window.desktopApi.getUser()
-        setUser(userData)
-        setFullName(userData?.name || "")
-        savedNameRef.current = userData?.name || ""
-      }
-      setIsLoading(false)
+    if (user) {
+      setFullName(user.name || "")
+      savedNameRef.current = user.name || ""
     }
-    fetchUser()
-  }, [])
+  }, [user])
 
   const handleBlurSave = useCallback(async () => {
     const trimmed = fullName.trim()
     if (trimmed === savedNameRef.current) return
     try {
-      if (window.desktopApi?.updateUser) {
-        const updatedUser = await window.desktopApi.updateUser({ name: trimmed })
-        if (updatedUser) {
-          setUser(updatedUser)
-          savedNameRef.current = updatedUser.name || ""
-          setFullName(updatedUser.name || "")
-        }
-      }
+      await updateProfile.mutateAsync({ name: trimmed })
+      savedNameRef.current = trimmed
+      toast.success("Profile updated")
     } catch (error) {
       console.error("Error updating profile:", error)
       toast.error(
         error instanceof Error ? error.message : "Failed to update profile"
       )
     }
-  }, [fullName])
+  }, [fullName, updateProfile])
 
   if (isLoading) {
     return (
@@ -104,6 +93,7 @@ export function AgentsProfileTab() {
                 onBlur={handleBlurSave}
                 className="w-full"
                 placeholder="Enter your name"
+                disabled={updateProfile.isPending}
               />
             </div>
           </div>
@@ -131,3 +121,4 @@ export function AgentsProfileTab() {
     </div>
   )
 }
+

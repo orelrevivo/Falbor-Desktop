@@ -7,9 +7,8 @@ import { useQuery } from "@tanstack/react-query"
 // Desktop: mock Next.js navigation hooks
 const useSearchParams = () => ({ get: () => null })
 const useRouter = () => ({ push: () => {}, replace: () => {} })
-// Import real Clerk hooks
+// Mock user for now or get from TRPC if needed
 const useUser = () => ({ user: null })
-import { useClerk } from "@clerk/clerk-react"
 import {
   selectedAgentChatIdAtom,
   selectedChatIsRemoteAtom,
@@ -59,9 +58,8 @@ import { useShallow } from "zustand/react/shallow"
 import { motion, AnimatePresence } from "motion/react"
 // import { ResizableSidebar } from "@/app/(alpha)/canvas/[id]/{components}/resizable-sidebar"
 import { ResizableSidebar } from "../../../components/ui/resizable-sidebar"
-// import { useClerk, useUser } from "@clerk/nextjs"
-// import { useCombinedAuth } from "@/lib/hooks/use-combined-auth"
-const useCombinedAuth = () => ({ userId: null }) // Desktop mock
+// Desktop mock
+const useCombinedAuth = () => ({ userId: null })
 import { Button } from "../../../components/ui/button"
 import { AlignJustify } from "lucide-react"
 import { AgentsQuickSwitchDialog } from "../components/agents-quick-switch-dialog"
@@ -119,7 +117,6 @@ export function AgentsContent() {
   const [isHydrated, setIsHydrated] = useState(false)
   const { userId } = useCombinedAuth()
   const { user } = useUser()
-  const { signOut } = useClerk()
   const isAdmin = useIsAdmin()
 
   // Quick-switch dialog state - Agents (Opt+Ctrl+Tab)
@@ -772,10 +769,7 @@ export function AgentsContent() {
     setApiKeyOnboardingCompleted(false)
     setCodexOnboardingCompleted(false)
 
-    // Web: use Clerk sign out first to ensure session is cleared
-    if (typeof signOut === "function") {
-      await signOut()
-    }
+    localStorage.removeItem("falbor_token")
 
     // Check if running in Electron desktop app
     if (typeof window !== "undefined" && window.desktopApi) {

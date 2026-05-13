@@ -2,6 +2,42 @@ import { pgTable, text, timestamp, integer, index } from "drizzle-orm/pg-core"
 import { relations } from "drizzle-orm"
 import { createId } from "../utils"
 
+// ============ USERS ============
+export const users = pgTable("users", {
+  id: text("id")
+    .primaryKey()
+    .$defaultFn(() => createId()),
+  email: text("email").notNull().unique(),
+  passwordHash: text("password_hash").notNull(),
+  name: text("name"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+})
+
+export const usersRelations = relations(users, ({ many }) => ({
+  sessions: many(sessions),
+}))
+
+// ============ SESSIONS ============
+export const sessions = pgTable("sessions", {
+  id: text("id")
+    .primaryKey()
+    .$defaultFn(() => createId()),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  token: text("token").notNull().unique(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+})
+
+export const sessionsRelations = relations(sessions, ({ one }) => ({
+  user: one(users, {
+    fields: [sessions.userId],
+    references: [users.id],
+  }),
+}))
+
 // ============ PROJECTS ============
 export const projects = pgTable("projects", {
   id: text("id")
@@ -20,10 +56,16 @@ export const projects = pgTable("projects", {
   iconPath: text("icon_path"),
   // Project type (e.g. "website", "app")
   type: text("type"),
+  userId: text("user_id")
+    .references(() => users.id, { onDelete: "cascade" }),
 })
 
-export const projectsRelations = relations(projects, ({ many }) => ({
+export const projectsRelations = relations(projects, ({ one, many }) => ({
   chats: many(chats),
+  user: one(users, {
+    fields: [projects.userId],
+    references: [users.id],
+  }),
 }))
 
 // ============ CHATS ============
@@ -45,6 +87,8 @@ export const chats = pgTable("chats", {
   // PR tracking fields
   prUrl: text("pr_url"),
   prNumber: integer("pr_number"),
+  userId: text("user_id")
+    .references(() => users.id, { onDelete: "cascade" }),
 }, (table) => [
   index("chats_worktree_path_idx").on(table.worktreePath),
 ])
@@ -53,6 +97,10 @@ export const chatsRelations = relations(chats, ({ one, many }) => ({
   project: one(projects, {
     fields: [chats.projectId],
     references: [projects.id],
+  }),
+  user: one(users, {
+    fields: [chats.userId],
+    references: [users.id],
   }),
   subChats: many(subChats),
 }))
@@ -121,3 +169,7 @@ export type NewClaudeCodeCredential = typeof claudeCodeCredentials.$inferInsert
 export type AnthropicAccount = typeof anthropicAccounts.$inferSelect
 export type NewAnthropicAccount = typeof anthropicAccounts.$inferInsert
 export type AnthropicSettings = typeof anthropicSettings.$inferSelect
+export type User = typeof users.$inferSelect
+export type NewUser = typeof users.$inferInsert
+export type Session = typeof sessions.$inferSelect
+export type NewSession = typeof sessions.$inferInsert

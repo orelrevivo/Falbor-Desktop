@@ -661,9 +661,14 @@ export function createWindow(options?: { chatId?: string; subChatId?: string }):
     ipcHandler = createIPCHandler({
       router: createAppRouter(getWindow),
       windows: [window],
-      createContext: async () => ({
-        getWindow,
-      }),
+      createContext: async () => {
+        const user = getAuthManager()?.getUser()
+        return {
+          getWindow,
+          userId: user?.id ?? null,
+          userEmail: user?.email ?? null,
+        }
+      },
     })
   }
 

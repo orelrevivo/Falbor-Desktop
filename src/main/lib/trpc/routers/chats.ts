@@ -215,9 +215,10 @@ export const chatsRouter = router({
    */
   list: publicProcedure
     .input(z.object({ projectId: z.string().optional() }))
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
       const db = getDatabase()
-      const conditions = [isNull(chats.archivedAt)]
+      if (!ctx.userId) return []
+      const conditions = [isNull(chats.archivedAt), eq(chats.userId, ctx.userId)]
       if (input.projectId) {
         conditions.push(eq(chats.projectId, input.projectId))
       }
@@ -235,9 +236,10 @@ export const chatsRouter = router({
    */
   listArchived: publicProcedure
     .input(z.object({ projectId: z.string().optional() }))
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
       const db = getDatabase()
-      const conditions = [isNotNull(chats.archivedAt)]
+      if (!ctx.userId) return []
+      const conditions = [isNotNull(chats.archivedAt), eq(chats.userId, ctx.userId)]
       if (input.projectId) {
         conditions.push(eq(chats.projectId, input.projectId))
       }
@@ -255,9 +257,10 @@ export const chatsRouter = router({
    */
   get: publicProcedure
     .input(z.object({ id: z.string() }))
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
       const db = getDatabase()
-      const chat = await getOne<any>(db.select().from(chats).where(eq(chats.id, input.id)))
+      if (!ctx.userId) return null
+      const chat = await getOne<any>(db.select().from(chats).where(and(eq(chats.id, input.id), eq(chats.userId, ctx.userId))))
       if (!chat) return null
 
       const chatSubChats = await getAll(
@@ -338,6 +341,7 @@ export const chatsRouter = router({
           .values({
             name: input.name,
             projectId: input.projectId,
+            userId: ctx.userId,
           })
           .returning()
       )
@@ -488,7 +492,7 @@ export const chatsRouter = router({
         db
           .update(chats)
           .set({ name: input.name, updatedAt: new Date() })
-          .where(eq(chats.id, input.id))
+          .where(and(eq(chats.id, input.id), eq(chats.userId, ctx.userId)))
           .returning()
       )
     }),
@@ -520,7 +524,7 @@ export const chatsRouter = router({
         db
           .update(chats)
           .set({ archivedAt: new Date() })
-          .where(eq(chats.id, input.id))
+          .where(and(eq(chats.id, input.id), eq(chats.userId, ctx.userId)))
           .returning()
       )
 
@@ -595,7 +599,7 @@ export const chatsRouter = router({
         db
           .update(chats)
           .set({ archivedAt: null })
-          .where(eq(chats.id, input.id))
+          .where(and(eq(chats.id, input.id), eq(chats.userId, ctx.userId)))
           .returning()
       )
     }),
@@ -623,7 +627,7 @@ export const chatsRouter = router({
         db
           .update(chats)
           .set({ archivedAt: new Date() })
-          .where(inArray(chats.id, input.chatIds))
+          .where(and(inArray(chats.id, input.chatIds), eq(chats.userId, ctx.userId)))
           .returning()
       )
 
@@ -692,7 +696,7 @@ export const chatsRouter = router({
         gitCache.invalidateParsedDiff(chat.worktreePath)
       }
 
-      return getOne(db.delete(chats).where(eq(chats.id, input.id)).returning())
+      return getOne(db.delete(chats).where(and(eq(chats.id, input.id), eq(chats.userId, ctx.userId))).returning())
     }),
 
   // ============ Sub-chat procedures ============

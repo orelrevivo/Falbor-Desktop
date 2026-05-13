@@ -1,50 +1,22 @@
 "use client"
 
 import { useState } from "react"
-import { ChevronLeft, Globe, Smartphone, FolderOpen, Github } from "lucide-react"
-import { motion } from "framer-motion"
+import { useAtom } from "jotai"
+import { ChevronLeft } from "lucide-react"
+
 import { IconSpinner, GitHubIcon } from "../../components/ui/icons"
 import { Logo } from "../../components/ui/logo"
 import { Input } from "../../components/ui/input"
 import { trpc } from "../../lib/trpc"
-import { useAtom } from "jotai"
 import { selectedProjectAtom } from "../agents/atoms"
 
 export function SelectRepoPage() {
   const [, setSelectedProject] = useAtom(selectedProjectAtom)
   const [showClonePage, setShowClonePage] = useState(false)
   const [githubUrl, setGithubUrl] = useState("")
-  const [creatingScratch, setCreatingScratch] = useState<"website" | "app" | null>(null)
 
   // Get tRPC utils for cache management
   const utils = trpc.useUtils()
-
-  // Scratch project mutation
-  const createScratch = trpc.projects.createScratchProject.useMutation({
-    onSuccess: (project) => {
-      if (project) {
-        // Optimistically update the projects list cache
-        utils.projects.list.setData(undefined, (oldData) => {
-          if (!oldData) return [project]
-          return [project, ...oldData]
-        })
-
-        setSelectedProject({
-          id: project.id,
-          name: project.name,
-          path: project.path,
-          gitRemoteUrl: project.gitRemoteUrl,
-          gitProvider: project.gitProvider as any,
-          gitOwner: project.gitOwner,
-          gitRepo: project.gitRepo,
-        })
-      }
-      setCreatingScratch(null)
-    },
-    onError: () => {
-      setCreatingScratch(null)
-    }
-  })
 
   // Open folder mutation
   const openFolder = trpc.projects.openFolder.useMutation({
@@ -211,82 +183,45 @@ export function SelectRepoPage() {
       <div className="w-full max-w-[440px] space-y-8 px-4">
         {/* Header */}
         <div className="text-center space-y-4">
-          <div className="w-16 h-16 rounded-full bg-primary flex items-center justify-center mx-auto shadow-sm">
-            <Logo className="w-8 h-8" fill="white" />
+          <div className="flex items-center justify-center mx-auto w-max">
+            <div className="w-12 h-12 rounded-full bg-primary flex items-center justify-center">
+              <Logo className="w-6 h-6" fill="white" />
+            </div>
           </div>
           <div className="space-y-1">
             <h1 className="text-base font-semibold tracking-tight">
-              Falbor
+              Select a repository
             </h1>
             <p className="text-sm text-muted-foreground">
-              How would you like to start?
+              Choose a local folder to start working with
             </p>
           </div>
         </div>
 
         {/* Content */}
-        <div className="space-y-4">
-          <div className="grid grid-cols-1 gap-3">
-            <button
-              onClick={() => {
-                setCreatingScratch("website")
-                createScratch.mutate({ type: "website" })
-              }}
-              disabled={createScratch.isPending}
-              className="flex items-center justify-center gap-2 h-12 w-full bg-primary text-white rounded-lg text-sm font-semibold transition-all hover:bg-primary/90 active:scale-[0.98] disabled:opacity-50"
-            >
-              {createScratch.isPending && creatingScratch === "website" ? (
-                <IconSpinner className="h-5 w-5" />
-              ) : (
-                <Globe className="h-5 w-5 mr-1" />
-              )}
-              Build a website from scratch
-            </button>
-
-            <button
-              onClick={() => {
-                setCreatingScratch("app")
-                createScratch.mutate({ type: "app" })
-              }}
-              disabled={createScratch.isPending}
-              className="flex items-center justify-center gap-2 h-12 w-full bg-foreground text-background rounded-lg text-sm font-semibold transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-50"
-            >
-              {createScratch.isPending && creatingScratch === "app" ? (
-                <IconSpinner className="h-5 w-5" />
-              ) : (
-                <Smartphone className="h-5 w-5 mr-1" />
-              )}
-              Build an app from scratch
-            </button>
-          </div>
-
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t border-border" />
-            </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-background px-2 text-muted-foreground">Or use existing</span>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <button
-              onClick={handleOpenFolder}
-              disabled={openFolder.isPending}
-              className="flex items-center justify-center h-10 border border-border bg-background rounded-lg text-sm font-medium transition-all hover:bg-foreground/[0.03] active:scale-[0.95] disabled:opacity-50"
-            >
-              {openFolder.isPending ? <IconSpinner className="h-4 w-4" /> : <FolderOpen className="h-4 w-4 mr-2" />}
-              Local folder
-            </button>
-            <button
-              onClick={() => setShowClonePage(true)}
-              disabled={cloneFromGitHub.isPending}
-              className="flex items-center justify-center h-10 border border-border bg-background rounded-lg text-sm font-medium transition-all hover:bg-foreground/[0.03] active:scale-[0.95] disabled:opacity-50"
-            >
-              {cloneFromGitHub.isPending ? <IconSpinner className="h-4 w-4" /> : <GitHubIcon className="h-4 w-4 mr-2" />}
-              GitHub
-            </button>
-          </div>
+        <div className="space-y-3">
+          <button
+            onClick={handleOpenFolder}
+            disabled={openFolder.isPending}
+            className="w-full h-8 px-4 bg-primary text-primary-foreground rounded-lg text-sm font-medium transition-[background-color,transform] duration-150 hover:bg-primary/90 active:scale-[0.97] shadow-[0_0_0_0.5px_rgb(23,23,23),inset_0_0_0_1px_rgba(255,255,255,0.14)] dark:shadow-[0_0_0_0.5px_rgb(23,23,23),inset_0_0_0_1px_rgba(255,255,255,0.14)] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+          >
+            {openFolder.isPending ? (
+              <IconSpinner className="h-4 w-4" />
+            ) : (
+              "Select folder"
+            )}
+          </button>
+          <button
+            onClick={() => setShowClonePage(true)}
+            disabled={cloneFromGitHub.isPending}
+            className="w-full h-8 px-4 bg-muted text-foreground rounded-lg text-sm font-medium transition-[background-color,transform] duration-150 hover:bg-muted/80 active:scale-[0.97] shadow-[0_0_0_0.5px_rgb(23,23,23),inset_0_0_0_1px_rgba(255,255,255,0.06)] dark:shadow-[0_0_0_0.5px_rgb(23,23,23),inset_0_0_0_1px_rgba(255,255,255,0.06)] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+          >
+            {cloneFromGitHub.isPending ? (
+              <IconSpinner className="h-4 w-4" />
+            ) : (
+              "Clone from GitHub"
+            )}
+          </button>
         </div>
       </div>
     </div>

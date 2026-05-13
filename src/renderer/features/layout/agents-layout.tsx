@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState, useMemo, useRef } from "react"
 import { useAtom, useAtomValue, useSetAtom } from "jotai"
-import { useClerk } from "@clerk/clerk-react"
+import { authTokenAtom } from "../../App"
 import { toast } from "sonner"
 import { isDesktopApp } from "../../lib/utils/platform"
 import { useIsMobile } from "../../lib/hooks/use-mobile"
@@ -51,7 +51,8 @@ const SIDEBAR_CLOSE_HOTKEY = "⌘\\"
 // ============================================================================
 
 export function AgentsLayout() {
-  const clerk = useClerk()
+  const [token, setToken] = useAtom(authTokenAtom)
+  const logoutMutation = trpc.auth.logout.useMutation()
   // No useHydrateAtoms - desktop doesn't need SSR, atomWithStorage handles persistence
   const isMobile = useIsMobile()
 
@@ -250,14 +251,25 @@ export function AgentsLayout() {
     setAnthropicOnboardingCompleted(false)
     setApiKeyOnboardingCompleted(false)
     setCodexOnboardingCompleted(false)
-    // Web: use Clerk sign out first to ensure session is cleared
-    await clerk.signOut()
+    // Custom sign out
+    try {
+      if (token) {
+        await logoutMutation.mutateAsync({ token })
+      }
+    } catch (e) {
+      console.error(e)
+    } finally {
+      localStorage.removeItem("falbor_token")
+      setToken("")
+    }
 
     if (window.desktopApi?.logout) {
       await window.desktopApi.logout()
     }
   }, [
-    clerk,
+    token,
+    setToken,
+    logoutMutation,
     setSelectedProject,
     setSelectedChatId,
     setBillingMethod,

@@ -117,6 +117,8 @@ export const subChats = DATABASE_URL ? pgSchema.subChats : sqliteSchema.subChats
 export const claudeCodeCredentials = DATABASE_URL ? pgSchema.claudeCodeCredentials : sqliteSchema.claudeCodeCredentials
 export const anthropicAccounts = DATABASE_URL ? pgSchema.anthropicAccounts : sqliteSchema.anthropicAccounts
 export const anthropicSettings = DATABASE_URL ? pgSchema.anthropicSettings : sqliteSchema.anthropicSettings
+export const users = pgSchema.users
+export const sessions = pgSchema.sessions
 
 /**
  * Dialect-agnostic helper to get a single row

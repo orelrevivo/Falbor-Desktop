@@ -1,5 +1,4 @@
-import { ClerkProvider, useUser } from "@clerk/clerk-react"
-import { Provider as JotaiProvider, useAtomValue, useSetAtom } from "jotai"
+import { Provider as JotaiProvider, useAtomValue, useSetAtom, atom, useAtom } from "jotai"
 import { ThemeProvider, useTheme } from "next-themes"
 import { useEffect, useMemo } from "react"
 import { Toaster } from "sonner"
@@ -27,6 +26,10 @@ import {
 import { appStore } from "./lib/jotai-store"
 import { VSCodeThemeProvider } from "./lib/themes/theme-provider"
 import { trpc } from "./lib/trpc"
+
+// Global token state
+const initialToken = localStorage.getItem("falbor_token") || ""
+export const authTokenAtom = atom<string>(initialToken)
 
 /**
  * Custom Toaster that adapts to theme
@@ -179,10 +182,17 @@ function AppContent() {
     }
   }, [masterOpenAIKey, validatedProject, projects, isLoadingProjects, setSelectedProject, ensureDefaultProject])
 
-  // 0. Check Clerk Auth
-  const { isLoaded: isUserLoaded, isSignedIn } = useUser()
+  // 0. Check Auth using custom TRPC
+  const [token] = useAtom(authTokenAtom)
+  const { data: user, isLoading: isLoadingUser, isError } = trpc.auth.me.useQuery(
+    { token },
+    { enabled: !!token, retry: false }
+  )
 
-  if (!isUserLoaded) {
+  const isUserLoaded = !token || (!isLoadingUser && (!!user || isError))
+  const isSignedIn = !!user
+
+  if (token && isLoadingUser) {
     return (
       <div className="h-screen w-screen flex items-center justify-center bg-[#050505]">
         <svg className="animate-spin h-8 w-8 text-primary opacity-50" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -209,8 +219,6 @@ function AppContent() {
 }
 
 export function App() {
-  const publishableKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY
-
   // Initialize analytics on mount
   useEffect(() => {
     initAnalytics()
@@ -246,35 +254,25 @@ export function App() {
     }
   }, [])
 
-  if (!publishableKey) {
-    return (
-      <div className="h-screen w-screen flex items-center justify-center bg-background text-foreground">
-        <p>Missing Clerk Publishable Key in .env</p>
-      </div>
-    )
-  }
-
   return (
-    <ClerkProvider publishableKey={publishableKey}>
-      <WindowProvider>
-        <JotaiProvider store={appStore}>
-          <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-            <VSCodeThemeProvider>
-              <TooltipProvider delayDuration={100}>
-                <TRPCProvider>
-                  <div
-                    data-agents-page
-                    className="h-screen w-screen bg-background text-foreground overflow-hidden"
-                  >
-                    <AppContent />
-                  </div>
-                  <ThemedToaster />
-                </TRPCProvider>
-              </TooltipProvider>
-            </VSCodeThemeProvider>
-          </ThemeProvider>
-        </JotaiProvider>
-      </WindowProvider>
-    </ClerkProvider>
+    <WindowProvider>
+      <JotaiProvider store={appStore}>
+        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+          <VSCodeThemeProvider>
+            <TooltipProvider delayDuration={100}>
+              <TRPCProvider>
+                <div
+                  data-agents-page
+                  className="h-screen w-screen bg-background text-foreground overflow-hidden"
+                >
+                  <AppContent />
+                </div>
+                <ThemedToaster />
+              </TRPCProvider>
+            </TooltipProvider>
+          </VSCodeThemeProvider>
+        </ThemeProvider>
+      </JotaiProvider>
+    </WindowProvider>
   )
 }

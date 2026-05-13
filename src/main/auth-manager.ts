@@ -34,6 +34,14 @@ export class AuthManager {
     this.onTokenRefresh = callback
   }
 
+  /**
+   * Save authentication data manually
+   */
+  save(data: AuthData): void {
+    this.store.save(data)
+    this.scheduleRefresh()
+  }
+
   private getApiUrl(): string {
     return getApiBaseUrl()
   }

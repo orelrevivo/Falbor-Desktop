@@ -7,6 +7,8 @@ import superjson from "superjson"
  */
 export interface Context {
   getWindow: () => BrowserWindow | null
+  userId: string | null
+  userEmail: string | null
 }
 
 /**
