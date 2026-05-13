@@ -25,8 +25,7 @@ function initAutoUpdaterConfig() {
   autoUpdater.autoRunAppAfterInstall = true // Restart app after install
 }
 
-// CDN base URL for updates
-const CDN_BASE = "https://cdn.21st.dev/releases/desktop"
+// We are using the default GitHub provider from package.json's build.publish
 
 // Minimum interval between update checks (prevent spam on rapid focus/blur)
 const MIN_CHECK_INTERVAL = 60 * 1000 // 1 minute
@@ -100,18 +99,7 @@ export async function initAutoUpdater(getWindows: () => BrowserWindow[]) {
   autoUpdater.allowDowngrade = false
   log.info(`[AutoUpdater] Using update channel: ${savedChannel}`)
 
-  // Configure feed URL to point to R2 CDN
-  // Note: We use a custom request headers to bypass CDN cache
-  autoUpdater.setFeedURL({
-    provider: "generic",
-    url: CDN_BASE,
-  })
-
-  // Add cache-busting to update requests
-  autoUpdater.requestHeaders = {
-    "Cache-Control": "no-cache, no-store, must-revalidate",
-    "Pragma": "no-cache",
-  }
+  // We will let electron-updater use the default GitHub provider defined in package.json
 
   // Event: Checking for updates
   autoUpdater.on("checking-for-update", () => {
@@ -180,7 +168,7 @@ export async function initAutoUpdater(getWindows: () => BrowserWindow[]) {
   // Register IPC handlers
   registerIpcHandlers()
 
-  log.info("[AutoUpdater] Initialized with feed URL:", CDN_BASE)
+  log.info("[AutoUpdater] Initialized with GitHub provider")
 }
 
 /**
@@ -194,23 +182,7 @@ function registerIpcHandlers() {
       return null
     }
     try {
-      // If force is true, add cache-busting timestamp to URL
-      if (force) {
-        const cacheBuster = `?t=${Date.now()}`
-        autoUpdater.setFeedURL({
-          provider: "generic",
-          url: `${CDN_BASE}${cacheBuster}`,
-        })
-        log.info("[AutoUpdater] Force check with cache-busting:", `${CDN_BASE}${cacheBuster}`)
-      }
       const result = await autoUpdater.checkForUpdates()
-      // Reset feed URL back to normal after force check
-      if (force) {
-        autoUpdater.setFeedURL({
-          provider: "generic",
-          url: CDN_BASE,
-        })
-      }
       return result?.updateInfo || null
     } catch (error) {
       log.error("[AutoUpdater] Check failed:", error)

@@ -7,9 +7,9 @@ import { useQuery } from "@tanstack/react-query"
 // Desktop: mock Next.js navigation hooks
 const useSearchParams = () => ({ get: () => null })
 const useRouter = () => ({ push: () => {}, replace: () => {} })
-// Desktop: mock Clerk hooks
+// Import real Clerk hooks
 const useUser = () => ({ user: null })
-const useClerk = () => ({ signOut: () => {} })
+import { useClerk } from "@clerk/clerk-react"
 import {
   selectedAgentChatIdAtom,
   selectedChatIsRemoteAtom,
@@ -772,13 +772,15 @@ export function AgentsContent() {
     setApiKeyOnboardingCompleted(false)
     setCodexOnboardingCompleted(false)
 
+    // Web: use Clerk sign out first to ensure session is cleared
+    if (typeof signOut === "function") {
+      await signOut()
+    }
+
     // Check if running in Electron desktop app
     if (typeof window !== "undefined" && window.desktopApi) {
       // Use desktop logout which clears the token and shows login page
       await window.desktopApi.logout()
-    } else {
-      // Web: use Clerk sign out
-      await signOut({ redirectUrl: window.location.pathname })
     }
   }
 

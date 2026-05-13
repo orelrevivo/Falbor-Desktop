@@ -1936,6 +1936,7 @@ const ChatViewInner = memo(function ChatViewInner({
   workspaceName,
   workspaceBranch,
   workspaceRepoName,
+  projectType,
 }: {
   chat: Chat<any>
   subChatId: string
@@ -1967,6 +1968,7 @@ const ChatViewInner = memo(function ChatViewInner({
   workspaceName?: string | null
   workspaceBranch?: string | null
   workspaceRepoName?: string | null
+  projectType?: "website" | "app" | null
 }) {
   const hasTriggeredRenameRef = useRef(false)
   const hasTriggeredAutoGenerateRef = useRef(false)
@@ -4645,12 +4647,24 @@ const ChatViewInner = memo(function ChatViewInner({
             chatId={subChatId}
             hasMessages={true} /* Always show "New Chat" placeholder when name is empty */
           />
-          {/* Workspace subtitle: repo • branch */}
-          {(workspaceRepoName || workspaceBranch) && (
-            <div className="max-w-2xl mx-auto px-4">
-              <span className="text-xs text-muted-foreground/50 truncate block">
-                {[workspaceRepoName, workspaceBranch].filter(Boolean).join(" • ")}
-              </span>
+          {/* Workspace subtitle: repo • branch • projectType */}
+          {(workspaceRepoName || workspaceBranch || projectType) && (
+            <div className="max-w-2xl mx-auto px-4 flex items-center gap-2">
+              {(workspaceRepoName || workspaceBranch) && (
+                <span className="text-xs text-muted-foreground/50 truncate">
+                  {[workspaceRepoName, workspaceBranch].filter(Boolean).join(" • ")}
+                </span>
+              )}
+              {projectType && (
+                <div className={cn(
+                  "px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border",
+                  projectType === "website" 
+                    ? "bg-green-500/10 text-green-500 border-green-500/20" 
+                    : "bg-blue-500/10 text-blue-500 border-blue-500/20"
+                )}>
+                  {projectType}
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -4826,6 +4840,112 @@ const ChatViewInner = memo(function ChatViewInner({
     </SearchHighlightProvider>
   )
 })
+
+// Helper to check if the project server is responding
+function useProjectServerStatus() {
+  const [isReady, setIsReady] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    let isMounted = true
+    const checkServer = async () => {
+      try {
+        // Use no-cors to avoid preflight issues, we just need to know if it's UP
+        const controller = new AbortController()
+        const timeoutId = setTimeout(() => controller.abort(), 1000)
+        
+        await fetch("http://localhost:5174", { 
+          mode: 'no-cors',
+          signal: controller.signal,
+          cache: 'no-cache'
+        })
+        
+        clearTimeout(timeoutId)
+        if (isMounted) {
+          setIsReady(true)
+          setError(null)
+        }
+      } catch (e) {
+        if (isMounted) {
+          setIsReady(false)
+          setError("Server not responding yet...")
+        }
+      }
+    }
+
+    const interval = setInterval(checkServer, 2000)
+    checkServer()
+    return () => {
+      isMounted = false
+      clearInterval(interval)
+    }
+  }, [])
+
+  return { isReady, error }
+}
+
+function ProjectPreview({ projectPath }: { projectPath?: string }) {
+  const { isReady, error } = useProjectServerStatus()
+  const [showIframe, setShowIframe] = useState(false)
+
+  // Add a small delay after isReady to ensure Vite is fully initialized
+  useEffect(() => {
+    if (isReady) {
+      const timer = setTimeout(() => setShowIframe(true), 1000)
+      return () => clearTimeout(timer)
+    } else {
+      setShowIframe(false)
+    }
+  }, [isReady])
+
+  if (!showIframe) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center bg-background text-center p-8 animate-in fade-in duration-500">
+        <div className="relative mb-6">
+          <div className="w-16 h-16 rounded-full border-4 border-primary/20 border-t-primary animate-spin" />
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="w-2 h-2 rounded-full bg-primary animate-ping" />
+          </div>
+        </div>
+        
+        <h3 className="text-xl font-bold mb-3 tracking-tight">Initializing Preview...</h3>
+        <p className="text-sm text-muted-foreground max-w-[280px] leading-relaxed mb-8">
+          The AI is currently setting up your Vite project and starting the development server.
+        </p>
+        
+        <div className="grid gap-3 w-full max-w-[320px]">
+          <div className="flex items-center justify-between p-3 rounded-lg bg-muted/40 border border-border/50">
+            <span className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground/60">Status</span>
+            <span className="text-[11px] font-bold text-amber-500 uppercase">{error || "Pinging..."}</span>
+          </div>
+          <div className="flex flex-col gap-1.5 p-3 rounded-lg bg-muted/40 border border-border/50 text-left">
+            <span className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground/60">Directory</span>
+            <code className="text-[10px] font-mono truncate text-primary/80">
+              {projectPath || "Detecting workspace..."}
+            </code>
+          </div>
+        </div>
+        
+        <div className="mt-10 flex items-center gap-2 text-[11px] text-muted-foreground/40 font-medium italic">
+          <IconSpinner className="h-3 w-3 animate-spin" />
+          Live updates will appear automatically
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex-1 flex flex-col bg-white animate-in zoom-in-95 fade-in duration-700">
+      <iframe 
+        src="http://localhost:5174" 
+        className="flex-1 border-none bg-white"
+        title="Project Preview"
+        // Allow scripts and same-origin for Vite HMR to work
+        sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+      />
+    </div>
+  )
+}
 
 // Chat View wrapper - handles loading and creates chat object
 export function ChatView({
@@ -5292,6 +5412,7 @@ export function ChatView({
     pinnedSubChatIds,
     allSubChats,
     splitPaneIds,
+    viewMode,
   } = useAgentSubChatStore(
     useShallow((state) => ({
       activeSubChatId: state.activeSubChatId,
@@ -5299,6 +5420,7 @@ export function ChatView({
       pinnedSubChatIds: state.pinnedSubChatIds,
       allSubChats: state.allSubChats,
       splitPaneIds: state.splitPaneIds,
+      viewMode: state.viewMode,
     }))
   )
   const [
@@ -5424,6 +5546,13 @@ export function ChatView({
     if (!remoteAgentChat) return []
     return getMatchingProjects(projects ?? [], remoteAgentChat)
   }, [remoteAgentChat, projects, getMatchingProjects])
+
+  // Auto-open sidebar for scratch projects (website/app) to show files/details
+  useEffect(() => {
+    if (agentChat?.project?.type && !isDetailsSidebarOpen) {
+      setIsDetailsSidebarOpen(true)
+    }
+  }, [agentChat?.project?.type, isDetailsSidebarOpen, setIsDetailsSidebarOpen])
 
   const agentSubChats = (agentChat?.subChats ?? []) as Array<{
     id: string
@@ -6562,6 +6691,7 @@ Make sure to preserve all functionality from both branches when resolving confli
       // Note: Extended thinking setting is read dynamically inside the transport
       // projectPath: original project path for MCP config lookup (worktreePath is the cwd)
       const projectPath = (agentChat as any)?.project?.path as string | undefined
+      const projectType = (agentChat as any)?.project?.type as "website" | "app" | undefined
       const chatSandboxId = (agentChat as any)?.sandboxId || (agentChat as any)?.sandbox_id
       const chatSandboxUrl = chatSandboxId ? `https://3003-${chatSandboxId}.e2b.app` : null
       const isRemoteChat = !!(agentChat as any)?.isRemote || !!chatSandboxId
@@ -6661,6 +6791,7 @@ Make sure to preserve all functionality from both branches when resolving confli
             projectPath,
             mode: subChatMode,
             provider: "codex",
+            projectType,
           })
         } else {
           // Local worktree chat: use IPC transport
@@ -6670,6 +6801,7 @@ Make sure to preserve all functionality from both branches when resolving confli
             cwd: worktreePath,
             projectPath,
             mode: subChatMode,
+            projectType,
           })
         }
       }
@@ -6942,6 +7074,7 @@ Make sure to preserve all functionality from both branches when resolving confli
           projectPath,
           mode: newSubChatMode,
           provider: "codex",
+          projectType,
         })
       } else {
         // Local worktree chat: use IPC transport
@@ -6951,6 +7084,7 @@ Make sure to preserve all functionality from both branches when resolving confli
           cwd: worktreePath,
           projectPath,
           mode: newSubChatMode,
+          projectType,
         })
       }
     }
@@ -7705,6 +7839,7 @@ Make sure to preserve all functionality from both branches when resolving confli
                             workspaceName={agentChat?.name ?? null}
                             workspaceBranch={agentChat?.branch ?? null}
                             workspaceRepoName={(agentChat as any)?.project?.gitRepo || (agentChat as any)?.project?.name || null}
+                            projectType={(agentChat as any)?.project?.type}
                           />
                         </div>
                       )
@@ -7755,6 +7890,7 @@ Make sure to preserve all functionality from both branches when resolving confli
                                 workspaceName={agentChat?.name ?? null}
                                 workspaceBranch={agentChat?.branch ?? null}
                                 workspaceRepoName={(agentChat as any)?.project?.gitRepo || (agentChat as any)?.project?.name || null}
+                                projectType={(agentChat as any)?.project?.type}
                               />
                             </div>
                           )
@@ -7762,6 +7898,21 @@ Make sure to preserve all functionality from both branches when resolving confli
                     </>
                   }
                 />
+              ) : viewMode === "preview" ? (
+                <div className="absolute inset-0 flex flex-col bg-background">
+                  <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-muted/20">
+                    <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1.5 px-2 py-1 bg-background border border-border rounded text-[11px] font-medium text-muted-foreground">
+                        <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+                        http://localhost:5173
+                      </div>
+                    </div>
+                    <div className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground/50">
+                      Web Container Preview
+                    </div>
+                  </div>
+                  <ProjectPreview projectPath={worktreePath || undefined} />
+                </div>
               ) : (
                 tabsToRender.map(subChatId => {
                 const chat = getOrCreateChat(subChatId)
@@ -7818,6 +7969,7 @@ Make sure to preserve all functionality from both branches when resolving confli
                       workspaceName={agentChat?.name ?? null}
                       workspaceBranch={agentChat?.branch ?? null}
                       workspaceRepoName={(agentChat as any)?.project?.gitRepo || (agentChat as any)?.project?.name || null}
+                      projectType={(agentChat as any)?.project?.type}
                     />
                   </div>
                 )

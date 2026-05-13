@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState, useMemo, useRef } from "react"
 import { useAtom, useAtomValue, useSetAtom } from "jotai"
+import { useClerk } from "@clerk/clerk-react"
 import { toast } from "sonner"
 import { isDesktopApp } from "../../lib/utils/platform"
 import { useIsMobile } from "../../lib/hooks/use-mobile"
@@ -50,6 +51,7 @@ const SIDEBAR_CLOSE_HOTKEY = "⌘\\"
 // ============================================================================
 
 export function AgentsLayout() {
+  const clerk = useClerk()
   // No useHydrateAtoms - desktop doesn't need SSR, atomWithStorage handles persistence
   const isMobile = useIsMobile()
 
@@ -248,10 +250,14 @@ export function AgentsLayout() {
     setAnthropicOnboardingCompleted(false)
     setApiKeyOnboardingCompleted(false)
     setCodexOnboardingCompleted(false)
+    // Web: use Clerk sign out first to ensure session is cleared
+    await clerk.signOut()
+
     if (window.desktopApi?.logout) {
       await window.desktopApi.logout()
     }
   }, [
+    clerk,
     setSelectedProject,
     setSelectedChatId,
     setBillingMethod,
@@ -324,7 +330,7 @@ export function AgentsLayout() {
           style={{ borderRightWidth: "0.5px" }}
         >
           {isSettingsView ? (
-            <SettingsSidebar />
+            <SettingsSidebar onSignOut={handleSignOut} />
           ) : (
             <AgentsSidebar
               desktopUser={desktopUser}

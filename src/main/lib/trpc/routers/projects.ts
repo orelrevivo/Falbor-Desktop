@@ -7,7 +7,7 @@ import { basename, join } from "path"
 import { exec } from "node:child_process"
 import { promisify } from "node:util"
 import { existsSync } from "node:fs"
-import { mkdir, copyFile, unlink } from "node:fs/promises"
+import { mkdir, copyFile, unlink, writeFile } from "node:fs/promises"
 import { extname } from "node:path"
 import { getGitRemoteInfo } from "../../git"
 import { trackProjectOpened } from "../../analytics"
@@ -172,6 +172,150 @@ export const projectsRouter = router({
           })
           .returning()
       )
+    }),
+  
+  /**
+   * Create a new project from scratch (Website or App)
+   */
+  createScratchProject: publicProcedure
+    .input(z.object({ type: z.enum(["website", "app"]) }))
+    .mutation(async ({ input }) => {
+      const db = getDatabase()
+      const timestamp = new Date().toLocaleDateString('en-US').replace(/\//g, '-') + '-' + Math.floor(Math.random() * 1000)
+      const projectName = `${input.type === "website" ? "New-Website" : "New-App"}-${timestamp}`
+      
+      const homePath = app.getPath("home")
+      const scratchDir = join(homePath, ".21st", "repos", "scratch")
+      const projectPath = join(scratchDir, projectName)
+      
+      if (!existsSync(projectPath)) {
+        await mkdir(projectPath, { recursive: true })
+      }
+
+      // Scaffold Vite files
+      const packageJson = {
+        name: projectName.toLowerCase(),
+        private: true,
+        version: "0.0.0",
+        type: "module",
+        scripts: {
+          "dev": "vite",
+          "build": "tsc && vite build",
+          "preview": "vite preview"
+        },
+        dependencies: {
+          "react": "^19.0.0",
+          "react-dom": "^19.0.0"
+        },
+        devDependencies: {
+          "@types/react": "^19.0.0",
+          "@types/react-dom": "^19.0.0",
+          "@vitejs/plugin-react": "^4.0.0",
+          "typescript": "^5.0.0",
+          "vite": "^6.0.0"
+        }
+      }
+
+      const viteConfig = `import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
+
+// https://vite.dev/config/
+export default defineConfig({
+  plugins: [react()],
+})`
+
+      const indexHtml = `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>${projectName}</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>`
+
+      const mainTsx = `import { StrictMode } from 'react'
+import { createRoot } from 'react-dom/client'
+import App from './App.tsx'
+import './index.css'
+
+createRoot(document.getElementById('root')!).render(
+  <StrictMode>
+    <App />
+  </StrictMode>,
+)`
+
+      const appTsx = `import { useState } from 'react'
+
+function App() {
+  const [count, setCount] = useState(0)
+
+  return (
+    <div style={{ 
+      display: 'flex', 
+      flexDirection: 'column', 
+      alignItems: 'center', 
+      justifyContent: 'center', 
+      height: '100vh',
+      fontFamily: 'Inter, system-ui, Avenir, Helvetica, Arial, sans-serif',
+      backgroundColor: '#242424',
+      color: 'white'
+    }}>
+      <h1>${input.type === 'website' ? 'My New Website' : 'My New App'}</h1>
+      <div className="card">
+        <button onClick={() => setCount((count) => count + 1)} style={{
+          padding: '0.6em 1.2em',
+          fontSize: '1em',
+          fontWeight: 500,
+          backgroundColor: '#1a1a1a',
+          cursor: 'pointer',
+          border: '1px solid transparent',
+          borderRadius: '8px',
+          transition: 'border-color 0.25s'
+        }}>
+          count is {count}
+        </button>
+      </div>
+      <p style={{ color: '#888' }}>
+        Built with Vite + React + TypeScript
+      </p>
+    </div>
+  )
+}
+
+export default App`
+
+      const indexCss = `body { margin: 0; }`
+
+      await writeFile(join(projectPath, "package.json"), JSON.stringify(packageJson, null, 2))
+      await writeFile(join(projectPath, "vite.config.ts"), viteConfig)
+      await writeFile(join(projectPath, "index.html"), indexHtml)
+      await mkdir(join(projectPath, "src"), { recursive: true })
+      await writeFile(join(projectPath, "src", "main.tsx"), mainTsx)
+      await writeFile(join(projectPath, "src", "App.tsx"), appTsx)
+      await writeFile(join(projectPath, "src", "index.css"), indexCss)
+
+      const newProject = await getOne<any>(
+        db
+          .insert(projects)
+          .values({
+            name: projectName,
+            path: projectPath,
+            type: input.type,
+          })
+          .returning()
+      )
+
+      trackProjectOpened({
+        id: newProject!.id,
+        hasGitRemote: false,
+      })
+
+      return newProject
     }),
 
   /**

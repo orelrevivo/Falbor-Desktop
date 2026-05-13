@@ -22,6 +22,8 @@ export const projects = sqliteTable("projects", {
   gitRepo: text("git_repo"),
   // Custom project icon (absolute path to local image file)
   iconPath: text("icon_path"),
+  // Project type (e.g. "website", "app")
+  type: text("type"),
 })
 
 export const projectsRelations = relations(projects, ({ many }) => ({

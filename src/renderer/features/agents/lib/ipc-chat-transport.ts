@@ -129,6 +129,7 @@ type IPCChatTransportConfig = {
   projectPath?: string // Original project path for MCP config lookup (when using worktrees)
   mode: "plan" | "agent"
   model?: string
+  projectType?: "website" | "app"
 }
 
 // Image attachment type matching the tRPC schema
@@ -216,6 +217,7 @@ export class IPCChatTransport implements ChatTransport<UIMessage> {
             offlineModeEnabled,
             enableTasks,
             ...(images.length > 0 && { images }),
+            projectType: this.config.projectType,
           },
           {
             onData: (chunk: UIMessageChunk) => {

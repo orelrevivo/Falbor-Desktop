@@ -27,11 +27,12 @@ interface AgentSubChatStore {
   pinnedSubChatIds: string[] // Pinned sub-chats
   allSubChats: SubChatMeta[] // All sub-chats for history
   splitPaneIds: string[] // Ordered IDs of panes in split group (empty = no split)
-  splitRatios: number[] // Per-pane width ratios summing to 1.0
+  viewMode: "chat" | "preview" // Toggle between chat and live preview
 
   // Actions
   setChatId: (chatId: string | null) => void
   setActiveSubChat: (subChatId: string) => void
+  setViewMode: (mode: "chat" | "preview") => void
   setOpenSubChats: (subChatIds: string[]) => void
   addToOpenSubChats: (subChatId: string) => void
   removeFromOpenSubChats: (subChatId: string) => void
@@ -140,6 +141,7 @@ export const useAgentSubChatStore = create<AgentSubChatStore>((set, get) => ({
   allSubChats: [],
   splitPaneIds: [],
   splitRatios: [],
+  viewMode: "chat",
 
   setChatId: (chatId) => {
     if (!chatId) {
@@ -151,6 +153,7 @@ export const useAgentSubChatStore = create<AgentSubChatStore>((set, get) => ({
         allSubChats: [],
         splitPaneIds: [],
         splitRatios: [],
+        viewMode: "chat",
       })
       return
     }
@@ -184,15 +187,28 @@ export const useAgentSubChatStore = create<AgentSubChatStore>((set, get) => ({
       splitRatios = getDefaultRatios(splitPaneIds.length)
     }
 
-    set({ chatId, openSubChatIds, activeSubChatId, pinnedSubChatIds, splitPaneIds, splitRatios, allSubChats: [] })
+    set({ 
+      chatId, 
+      openSubChatIds, 
+      activeSubChatId, 
+      pinnedSubChatIds, 
+      splitPaneIds, 
+      splitRatios,
+      allSubChats: [],
+      viewMode: "chat" 
+    })
   },
 
   setActiveSubChat: (subChatId) => {
     const { chatId } = get()
     // Split group is independent — navigating tabs never touches it.
     // Split view shows automatically when active tab is part of the group.
-    set({ activeSubChatId: subChatId })
+    set({ activeSubChatId: subChatId, viewMode: "chat" }) // Auto-switch to chat when switching tabs
     if (chatId) saveToLS(chatId, "active", subChatId)
+  },
+
+  setViewMode: (mode) => {
+    set({ viewMode: mode })
   },
 
   setOpenSubChats: (subChatIds) => {

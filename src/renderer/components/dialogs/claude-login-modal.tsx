@@ -27,18 +27,18 @@ type AuthFlowState =
   | { step: "idle" }
   | { step: "starting" }
   | {
-      step: "waiting_url"
-      sandboxId: string
-      sandboxUrl: string
-      sessionId: string
-    }
+    step: "waiting_url"
+    sandboxId: string
+    sandboxUrl: string
+    sessionId: string
+  }
   | {
-      step: "has_url"
-      sandboxId: string
-      oauthUrl: string
-      sandboxUrl: string
-      sessionId: string
-    }
+    step: "has_url"
+    sandboxId: string
+    oauthUrl: string
+    sandboxUrl: string
+    sessionId: string
+  }
   | { step: "submitting" }
   | { step: "error"; message: string }
 
@@ -365,39 +365,39 @@ export function ClaudeLoginModal({
             {(urlOpened ||
               flowState.step === "has_url" ||
               flowState.step === "submitting") && (
-              <div className="space-y-4">
-                <Input
-                  value={authCode}
-                  onChange={handleCodeChange}
-                  onKeyDown={handleKeyDown}
-                  placeholder="Paste your authentication code here..."
-                  className="font-mono text-center"
-                  autoFocus
-                  disabled={isSubmitting}
-                />
-                <Button
-                  onClick={handleSubmitCode}
-                  className="w-full"
-                  disabled={!authCode.trim() || isSubmitting}
-                >
-                  {isSubmitting ? <IconSpinner className="h-4 w-4" /> : "Continue"}
-                </Button>
-                <p className="text-xs text-muted-foreground text-center">
-                  A new tab has opened for authentication.
-                  {savedOauthUrl && (
-                    <>
-                      {" "}
-                      <button
-                        onClick={handleOpenFallbackUrl}
-                        className="text-primary hover:underline"
-                      >
-                        Didn't open? Click here
-                      </button>
-                    </>
-                  )}
-                </p>
-              </div>
-            )}
+                <div className="space-y-4">
+                  <Input
+                    value={authCode}
+                    onChange={handleCodeChange}
+                    onKeyDown={handleKeyDown}
+                    placeholder="Paste your authentication code here..."
+                    className="font-mono text-center"
+                    autoFocus
+                    disabled={isSubmitting}
+                  />
+                  <Button
+                    onClick={handleSubmitCode}
+                    className="w-full"
+                    disabled={!authCode.trim() || isSubmitting}
+                  >
+                    {isSubmitting ? <IconSpinner className="h-4 w-4" /> : "Continue"}
+                  </Button>
+                  <p className="text-xs text-muted-foreground text-center">
+                    A new tab has opened for authentication.
+                    {savedOauthUrl && (
+                      <>
+                        {" "}
+                        <button
+                          onClick={handleOpenFallbackUrl}
+                          className="text-primary hover:underline"
+                        >
+                          Didn't open? Click here
+                        </button>
+                      </>
+                    )}
+                  </p>
+                </div>
+              )}
 
             {/* Error State */}
             {flowState.step === "error" && (

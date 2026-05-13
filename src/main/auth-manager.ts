@@ -5,9 +5,9 @@ import { AUTH_SERVER_PORT } from "./constants"
 // Get API URL - in packaged app always use production, in dev allow override
 function getApiBaseUrl(): string {
   if (app.isPackaged) {
-    return "https://21st.dev"
+    return "https://YOUR-SITE-URL.com" // <--- I will replace this once you tell me
   }
-  return import.meta.env.MAIN_VITE_API_URL || "https://21st.dev"
+  return import.meta.env.MAIN_VITE_API_URL || "https://YOUR-SITE-URL.com"
 }
 
 export class AuthManager {

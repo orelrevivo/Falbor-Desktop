@@ -208,6 +208,8 @@ export function SubChatSelector({
     addToSplit,
     removeFromSplit,
     closeSplit,
+    viewMode,
+    setViewMode,
   } = useAgentSubChatStore(
     useShallow((state) => ({
       activeSubChatId: state.activeSubChatId,
@@ -220,6 +222,8 @@ export function SubChatSelector({
       addToSplit: state.addToSplit,
       removeFromSplit: state.removeFromSplit,
       closeSplit: state.closeSplit,
+      viewMode: state.viewMode,
+      setViewMode: state.setViewMode,
     }))
   )
   const [loadingSubChats] = useAtom(loadingSubChatsAtom)
@@ -684,6 +688,32 @@ export function SubChatSelector({
           WebkitAppRegion: "no-drag",
         }}
       >
+        {/* View Mode Toggle */}
+        <div className="flex items-center gap-0.5 mr-3 flex-shrink-0 bg-muted/30 p-0.5 rounded-md border border-border/40">
+          <button
+            onClick={() => setViewMode("chat")}
+            className={cn(
+              "px-2.5 py-1 rounded-[4px] text-[11px] font-semibold transition-all duration-200",
+              viewMode === "chat" 
+                ? "bg-background text-foreground shadow-sm ring-1 ring-border/50" 
+                : "text-muted-foreground hover:text-foreground hover:bg-background/50"
+            )}
+          >
+            Chat
+          </button>
+          <button
+            onClick={() => setViewMode("preview")}
+            className={cn(
+              "px-2.5 py-1 rounded-[4px] text-[11px] font-semibold transition-all duration-200 flex items-center gap-1.5",
+              viewMode === "preview" 
+                ? "bg-background text-foreground shadow-sm ring-1 ring-border/50" 
+                : "text-muted-foreground hover:text-foreground hover:bg-background/50"
+            )}
+          >
+            <Play className="h-3 w-3 fill-current opacity-70" />
+            Display
+          </button>
+        </div>
         {/* Left gradient - visibility controlled via ref */}
         <div
           ref={leftGradientRef}

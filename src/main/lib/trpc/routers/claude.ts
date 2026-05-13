@@ -818,6 +818,7 @@ export const claudeRouter = router({
         historyEnabled: z.boolean().optional(),
         offlineModeEnabled: z.boolean().optional(), // Whether offline mode (Ollama) is enabled in settings
         enableTasks: z.boolean().optional(), // Enable task management tools (TodoWrite, Task agents)
+        projectType: z.enum(["website", "app"]).optional(), // Project context for specialized AI assistance
       }),
     )
     .subscription(({ input }) => {
@@ -1077,6 +1078,31 @@ export const claudeRouter = router({
 
             // Build final prompt with skill instructions if needed
             let finalPrompt = cleanedPrompt
+
+            // Inject project-specific instructions for fresh sessions
+            if (!input.sessionId && input.projectType) {
+              if (input.projectType === "website") {
+                finalPrompt = `[CONTEXT: WEBSITE DEVELOPER MODE] You are a professional web developer. The user is building a website from scratch using Vite + React + TypeScript.
+The project is already initialized with a standard Vite structure (package.json, index.html, src/main.tsx, src/App.tsx).
+Your first priority is to run setup commands:
+1. Run \`bun install\` to install dependencies.
+2. Run \`bun dev\` in a separate terminal or background to start the development server.
+CRITICAL INSTRUCTION: You MUST use the \`Write\` or \`Edit\` tools to save code to files. DO NOT just output code blocks in your text response.
+The user will view the site using a web container pointing to http://localhost:5174.
+Focus on modern web technologies, responsive design, and SEO.
+Always work within the existing Vite structure and enhance the current React application.\n\n${finalPrompt}`
+              } else if (input.projectType === "app") {
+                finalPrompt = `[CONTEXT: APP ARCHITECT MODE] You are a senior software architect. The user is building a desktop application from scratch using Vite + React + TypeScript.
+The project is already initialized with a standard Vite structure (package.json, index.html, src/main.tsx, src/App.tsx).
+Your first priority is to run setup commands:
+1. Run \`bun install\` to install dependencies.
+2. Run \`bun dev\` in a separate terminal or background to start the development server.
+CRITICAL INSTRUCTION: You MUST use the \`Write\` or \`Edit\` tools to save code to files. DO NOT just output code blocks in your text response.
+The user will view the app using a web container pointing to http://localhost:5174.
+Focus on robust architecture, state management, and component reusability.
+Always work within the existing Vite structure and enhance the current React application.\n\n${finalPrompt}`
+              }
+            }
 
             // Handle empty prompt when only mentions are present
             if (!finalPrompt.trim()) {

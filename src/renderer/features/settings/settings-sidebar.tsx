@@ -1,5 +1,5 @@
 import { useAtom, useAtomValue, useSetAtom } from "jotai"
-import { ChevronLeft } from "lucide-react"
+import { ChevronLeft, LogOut } from "lucide-react"
 import { useCallback, useEffect, useMemo, useRef } from "react"
 import {
   EyeOpenFilledIcon,
@@ -138,7 +138,7 @@ function TabButton({ tab, isActive, onClick }: TabButtonProps) {
   )
 }
 
-export function SettingsSidebar() {
+export function SettingsSidebar({ onSignOut }: { onSignOut?: () => void }) {
   const [activeTab, setActiveTab] = useAtom(agentsSettingsDialogActiveTabAtom)
   const [devToolsUnlocked, setDevToolsUnlocked] = useAtom(devToolsUnlockedAtom)
   const setDesktopView = useSetAtom(desktopViewAtom)
@@ -226,6 +226,15 @@ export function SettingsSidebar() {
               onClick={() => handleTabClick(tab.id)}
             />
           ))}
+
+          {/* Logout Button */}
+          <button
+            onClick={onSignOut}
+            className="inline-flex items-center whitespace-nowrap transition-colors duration-75 cursor-pointer w-full justify-start gap-2 text-left px-3 py-1.5 text-sm h-7 rounded-md text-red-500 hover:bg-red-500/10 font-medium mt-2"
+          >
+            <LogOut className="h-4 w-4 opacity-70" />
+            <span className="flex-1 truncate">Log out</span>
+          </button>
         </div>
 
       </div>
